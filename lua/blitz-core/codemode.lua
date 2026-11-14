@@ -1,3 +1,6 @@
+--- Tool name for codemode. Runs a Lua script in the agent sandbox that calls
+--- the other tools (`ctx:call`, `ctx:batch`) instead of one-by-one turns;
+--- `print` output and the return value are the only text that enters the chat.
 return blitz.register_tool({
 	name = "codemode",
 	description = [[Execute a Lua script that drives the other tools instead of calling them one by one.

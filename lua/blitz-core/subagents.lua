@@ -131,6 +131,9 @@ Start independent agents together in one message and keep working while they run
 	end,
 })
 
+--- Subagent toolset: `agent`, `message_agent`, `cancel_agent`, `idle`.
+--- Launch background agents, message or cancel them, and end the turn with
+--- `idle` until a subagent reports.
 M.toolset = { message, cancel, idle, agent }
 
 ---------------------------------------------------------------------------------------------------

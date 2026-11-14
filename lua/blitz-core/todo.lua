@@ -24,6 +24,7 @@ local STATE_PENDING = "pending"
 local STATE_PROGRESS = "in_progress"
 local STATE_DONE = "done"
 
+--- Checkbox shown per state: pending `[ ]`, in_progress `[~]`, done `[x]`.
 M.marks = {
 	[STATE_PENDING] = "[ ]",
 	[STATE_PROGRESS] = "[~]",
@@ -156,6 +157,9 @@ local list = blitz.register_tool({
 	end,
 })
 
+--- Todo toolset: `todo_add`, `todo_start`, `todo_done`, `todo_list`.
+--- One list per agent in session state; started tasks come first, done tasks
+--- leave the list.
 M.toolset = {
 	add,
 	start,
