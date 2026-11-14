@@ -1,7 +1,7 @@
 local M = {}
 
 M.codemode = require("blitz-core.codemode")
-M.agents = require("blitz-core.subagents")
+M.subagents = require("blitz-core.subagents")
 M.todo = require("blitz-core.todo")
 
 return M
