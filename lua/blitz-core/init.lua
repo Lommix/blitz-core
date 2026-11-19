@@ -1,11 +1,11 @@
 --- Default plugins for the Blitzdenk harness.
---- Each module registers its tools on require; pass the returned tool name or
---- toolset to `blitz.add_tool` / `blitz.set_agent_tools`.
+--- Subagents and todo register their tools on require; pass the returned toolset
+--- to `blitz.add_tool` / `blitz.set_agent_tools`. Codemode registers on `setup`.
 local M = {}
 
---- Tool name for codemode. Executes a Lua script in the agent sandbox that
---- drives every registered tool through `ctx:call` and `ctx:batch`.
----@type string
+--- Codemode module. `core.codemode.setup({ tools = { ... } })` registers a
+--- codemode tool granted exactly those tools and returns its tool name.
+---@type { setup: fun(opts: CodemodeOpts): string }
 M.codemode = require("blitz-core.codemode")
 
 --- Subagent toolset: `agent`, `message_agent`, `cancel_agent`, `idle`.
@@ -17,5 +17,9 @@ M.subagents = require("blitz-core.subagents")
 --- One list per agent in session state, with open counts injected into the
 --- session context.
 M.todo = require("blitz-core.todo")
+
+--- Default Statusbar render
+---@type fun(): string
+M.statusbar = require("blitz-core.statusbar")
 
 return M

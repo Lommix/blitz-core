@@ -168,12 +168,48 @@
 ---text input.
 ---@field history_next fun()
 
----@class BlitzWidgetBuf
----visible widget width in cells, shrinks when clipped
+---@class BlitzUiSpan
+---span text, newlines start a new line
+---@field [1] string
+---text color: '#RRGGBB' or a theme color name (bg, overlay, muted, text, info, ok, warn, err, ...)
+---@field fg? string
+---background color, inherited by children
+---@field bg? string
+---@field bold? boolean
+---@field dim? boolean
+---@field italic? boolean
+---@field underline? boolean
+---@field reverse? boolean
+---@field strikethrough? boolean
+
+---@class BlitzUiPadding
+---left and right
+---@field x? integer
+---top and bottom
+---@field y? integer
+---@field top? integer
+---@field right? integer
+---@field bottom? integer
+---@field left? integer
+
+---@class BlitzUiStyle
+---text color: '#RRGGBB' or a theme color name (bg, overlay, muted, text, info, ok, warn, err, ...)
+---@field fg? string
+---background color, inherited by children
+---@field bg? string
+---@field bold? boolean
+---@field dim? boolean
+---@field italic? boolean
+---@field underline? boolean
+---@field reverse? boolean
+---@field strikethrough? boolean
+
+---@class BlitzUiCanvasBuf
+---canvas width in cells
 ---@field width integer
----visible widget height in cells, shrinks when clipped
+---canvas height in cells
 ---@field height integer
----write text at widget-relative coords, clipped to the widget rect, theme text color
+---write text at canvas-relative coords, clipped to the canvas, theme text color
 ---@field set fun(x: integer, y: integer, text: string)
 ---write text with a foreground color
 ---@field set_color fun(x: integer, y: integer, text: string, color: string)
@@ -184,51 +220,130 @@
 ---unicode line border in foreground color
 ---@field box fun(x: integer, y: integer, w: integer, h: integer, color: string)
 
----@class BlitzSidebarDef
----'left' (default) or 'right'
----@field side? string
----columns
----@field width integer
----draw callback, runs on every drawn frame
----@field render fun(width: integer, height: integer, buf: BlitzWidgetBuf, frame: integer)
+---@class BlitzUiProps
+---array part: child nodes of a box, or the content of a text node as strings and spans. On set it replaces the previous children or content; children left out are removed
+---@field [integer] BlitzUiNode|BlitzUiSpan|string
+---cells, 'fit' the content, or 'fill' the parent. Unset: fit along the parent's direction, stretch across it
+---@field width? integer|"fit"|"fill"
+---cells, 'fit' or 'fill', like width
+---@field height? integer|"fit"|"fill"
+---share of the parent's free space along its direction; 0 keeps the fitted size
+---@field grow? integer
+---@field min_width? integer
+---@field min_height? integer
+---@field max_width? integer
+---@field max_height? integer
+---a hidden node takes no space
+---@field hidden? boolean
+---box: direction children are laid out in, default 'column'
+---@field dir? "row"|"column"
+---box: cells between children
+---@field gap? integer
+---box: cells between the edge and the children
+---@field padding? integer|BlitzUiPadding
+---box: true for a border in the theme border color, or a color
+---@field border? boolean|string
+---box: text on the top border
+---@field title? string
+---box: placement of children across the direction, default 'stretch'
+---@field align? "stretch"|"start"|"center"|"end"
+---text: wrap at the node width; unwrapped text is cut with an ellipsis
+---@field wrap? boolean
+---box: text of the first child, created when missing. The label of a button
+---@field label? string
+---runs after a left click on the node, on the main thread in the main VM. false removes it
+---@field on_click? fun()|false
+---key combo such as '<C-a>' that triggers on_click while the node is on screen. Wins over blitz.bind
+---@field key? string|false
+---ignore clicks and keys, draw muted
+---@field disabled? boolean
+---style while the mouse button is held on the node
+---@field pressed? BlitzUiStyle|false
+---box: slot name that ui.mount targets. Required by ui.slot
+---@field name? string
+---give way, last sibling first, while siblings with a minimum size do not fit. Default for slots
+---@field collapsible? boolean
+---canvas: draw callback, runs on every drawn frame. A callback that errors is removed
+---@field draw? fun(buf: BlitzUiCanvasBuf, frame: integer)|false
+---text color: '#RRGGBB' or a theme color name (bg, overlay, muted, text, info, ok, warn, err, ...)
+---@field fg? string
+---background color, inherited by children
+---@field bg? string
+---@field bold? boolean
+---@field dim? boolean
+---@field italic? boolean
+---@field underline? boolean
+---@field reverse? boolean
+---@field strikethrough? boolean
 
----@class BlitzWidgetHandle
----make the widget visible again
----@field show fun()
----hide the widget, its space returns to the layout
----@field hide fun()
----unregister the widget permanently
----@field remove fun()
----set width (sidebar) or height (panel) in cells
----@field set_size fun(size: integer)
+---@class BlitzUiNode
+---Merge props into the node. Only the given keys change. A text node also takes a plain string.
+---@field set fun(self: BlitzUiNode, props: BlitzUiProps|string): BlitzUiNode
+---Append a child to a box, or insert it at a 1-based index. A child that already has a parent moves.
+---@field add fun(self: BlitzUiNode, child: BlitzUiNode, index?: integer): BlitzUiNode
+---Remove the node and everything below it for good. Its handles go dead; calls on a dead handle do nothing. The timeline and composer are only detached and stay alive.
+---@field remove fun(self: BlitzUiNode): BlitzUiNode
+---Remove every child of a box.
+---@field clear fun(self: BlitzUiNode): BlitzUiNode
+---Make a hidden node visible again.
+---@field show fun(self: BlitzUiNode): BlitzUiNode
+---Hide the node; its space returns to the layout.
+---@field hide fun(self: BlitzUiNode): BlitzUiNode
 
----@class BlitzPanelDef
----rows
----@field height integer
----'between' (default) pins the panel between timeline and input, 'below' pins it under the input
----@field place? string
----draw callback, runs on every drawn frame
----@field render fun(width: integer, height: integer, buf: BlitzWidgetBuf, frame: integer)
-
----@class BlitzDraw
----Reserve a full height sidebar column and draw into it from Lua.
----side is 'left' (default) or 'right', width is cells. A second add on
----the same side replaces the first. The sidebar hides automatically
----while the main column would drop below 40 columns. render runs on
----every drawn frame with widget-relative dimensions, a BlitzWidgetBuf,
----and the app frame counter (frame) for animations.
----Colors are '#RRGGBB' hex or theme names (bg, muted, text, info, ...).
----@field sidebar fun(def: BlitzSidebarDef): BlitzWidgetHandle
----Reserve a horizontal panel and draw into it from Lua.
----height is cells. Panels of the same place stack bottom up in
----registration order, the first registered panel sits on top of its block.
----place 'between' (default) pins the panel between timeline and input,
----place 'below' pins it under the input widget. All panels hide
----automatically while the timeline viewport would drop below 6 rows. render
----runs on every drawn frame with widget-relative dimensions, a BlitzWidgetBuf,
----and the app frame counter (frame) for animations.
----@field panel fun(def: BlitzPanelDef): BlitzWidgetHandle
----Request a UI redraw on the next loop tick. Call from animations to force frames while the app is idle.
+---@class BlitzUi
+---Create a container. Children go in the array part and are laid
+---out along dir. The scene is retained: Zig measures, lays out
+---and draws it every frame without calling Lua, so build the tree
+---once and change it with node:set, node:add and node:remove from
+---hooks, binds and callbacks. A node that is neither mounted nor
+---held by a handle is collected. Main VM only: in tool and
+---listener VMs every constructor returns a dead handle.
+---@field box fun(props?: BlitzUiProps): BlitzUiNode
+---Create a text node. The array part is the content: strings and
+---spans such as { "failed", fg = "err", bold = true }. Style keys
+---on the node apply to every span. ui.text("plain") works too.
+---@field text fun(props: BlitzUiProps|string): BlitzUiNode
+---Create an empty node that takes the free space of its parent along the parent's direction.
+---@field spacer fun(props?: BlitzUiProps): BlitzUiNode
+---Create a clickable box with a label, padding and a pressed
+---style. Takes label, on_click and key plus every box prop.
+---@field button fun(props?: BlitzUiProps): BlitzUiNode
+---Create a node drawn by Lua through its draw callback. The only
+---node that calls Lua per frame; give it a width and height or
+---grow. A frame is skipped while another thread holds the main VM.
+---@field canvas fun(props?: BlitzUiProps): BlitzUiNode
+---Put a node on screen in a named slot and return it. Slots of
+---the default root: 'left' and 'right' are full height columns
+---beside the main column, 'between' sits between timeline and
+---input, 'below' under the input. Nodes of one slot stack in
+---mount order. The side slots give way while the main column
+---would drop below 40 columns, 'below' and then 'between' while
+---the timeline would drop below 6 rows. A custom root defines
+---its own slots; a name it lacks raises. node:remove() unmounts.
+---@field mount fun(slot: string, node: BlitzUiNode): BlitzUiNode
+---Return the timeline node. There is one; every call returns the
+---same node and merges props into it. It fits its content and
+---shrinks to the space its siblings leave, so the node after it
+---floats under the last message until the timeline fills up.
+---@field timeline fun(props?: BlitzUiProps): BlitzUiNode
+---Return the composer node: the input box with its progress and
+---status rows, and the permission, ask and wizard prompts. There
+---is one; every call returns the same node. It fits its height,
+---so place it in a column.
+---@field composer fun(props?: BlitzUiProps): BlitzUiNode
+---Create a named mount point: a collapsible box that ui.mount
+---fills. Takes name plus every box prop. An empty slot takes no
+---space.
+---@field slot fun(props?: BlitzUiProps): BlitzUiNode
+---Replace the whole screen layout with a box and return it. The
+---tree must contain ui.timeline() and ui.composer(); everything
+---else is up to you. Nodes mounted in a slot move to the slot of
+---the same name in the new root and are removed when it has
+---none. ui.root(nil) restores the default root, which also
+---returns when the timeline or composer leaves the tree. The Lua
+---error strip stays above every root.
+---@field root fun(node?: BlitzUiNode|nil): BlitzUiNode|nil
+---Request a frame on the next loop tick. Node changes redraw on their own; canvas animations call this while the app is idle.
 ---@field redraw fun()
 
 ---@class BlitzToolDef
@@ -238,6 +353,8 @@
 ---@field KILL_JOB string
 ---read background bash job output
 ---@field READ_JOB string
+---send keystrokes to a background bash job
+---@field WRITE_JOB string
 ---reading text files and images
 ---@field READ string
 ---write new files
@@ -258,7 +375,7 @@
 ---@field LS string
 
 ---@class BlitzToolsetDef
----bash with run_in_background, plus read_job and kill_job
+---bash with run_in_background, plus read_job, write_job and kill_job
 ---@field BASH_BACKGROUND string[]
 ---read only search: grep, find and ls
 ---@field READONLY string[]
@@ -366,6 +483,26 @@
 ---listener finished; unresolved tickets then fall back to the
 ---mode check and the TUI.The listener runs in a sandbox Lua VM on a background thread. Cannot mutate lua state. Use `blitz.state.set/get`
 ---@field permission_requested fun(func: fun(ev: BlitzPermissionRequestEvent))
+---Register a callback that runs on every TUI loop iteration:
+---at least every 16 ms while idle, more often during input.
+---It is not a fixed rate; throttle on your own clock. Each
+---call adds a callback; all run in registration order in the
+---main Lua VM on the main thread. An iteration is skipped
+---while another thread holds the main VM. A callback that
+---errors is unregistered. Keep it short and call
+---blitz.ui.redraw() when a canvas changes. A reload clears
+---every callback. Never call blitz.agent.await inside it.
+---@field tick fun(func: fun())
+---Register a callback that runs when the main agent's state
+---changes. It receives the new state, the same label as
+---BlitzAgentRow.state, or "" when there is no main agent.
+---Changes are sampled once per loop iteration, so states
+---shorter than that are coalesced. Each call adds a callback;
+---all run in registration order in the main Lua VM on the
+---main thread. A callback that errors is unregistered. A
+---reload clears every callback and reports the current state
+---again. Never call blitz.agent.await inside it.
+---@field state_changed fun(func: fun(state: string))
 ---Install one system-reminder injection listener. Takes one
 ---BlitzInjectHook table. func runs for every agent step before
 ---the reminder is built, in the main Lua VM on the calling
@@ -389,7 +526,7 @@
 ---normal flow. Last registration wins. Never call
 ---blitz.agent.await inside the hook.
 ---@field approve fun(hook: fun(payload: BlitzPermissionPayload): BlitzPermissionDecision)
----Remove the approve, inject, and prompt hooks.
+---Remove the approve, inject, prompt, tick, and state_changed hooks.
 ---@field clear fun()
 
 ---@class BlitzPermissionSnapshot
@@ -437,16 +574,18 @@
 ---@field cwd string
 ---@field agent_id integer
 ---@field state table
+---Exposed names of the granted tools that resolved for this call, in grant order, first wins on a shared name. Nil when the tool has no grant list.
+---@field tools? string[]|nil
 ---Set the tool status text. May contain ANSI SGR escape codes for styling, and newlines for multiple lines.
 ---@field set_status fun(self: BlitzCtx, msg: string)
 ---@field set_child_id fun(self: BlitzCtx, agent_id: integer)
 ---@field approve fun(self: BlitzCtx, description: string): integer, string|nil
 ---Ask the user up to 8 independent multiple-choice questions in one request. Returns REQ_STATUS_CHOICE and one pick list per question, or REQ_STATUS_DENIED and nil when canceled. Each pick carries text and a 1-based index; a custom message pick has no index.
 ---@field ask fun(self: BlitzCtx, request: BlitzAskRequest): integer, BlitzAskPick[][]|nil
----Run one tool of this agent. Returns the tool result text. When it exceeds 32KB or 2000 lines, the tail is kept, the full text spills to a file, and the locator is appended. Returns the nested error text on failure. Rejects nested codemode.
----@field call fun(self: BlitzCtx, name: string, args: table): string
----Run an array of { name, args } requests in parallel, at most 8 concurrent. Returns one tail-capped result text per request, in input order. A failed item does not abort the batch.
----@field batch fun(self: BlitzCtx, requests: table): string[]
+---Run one tool of this agent. Returns the tool result text and, when the tool produced an image (for example read on a png), a second value { media_type, data } with base64 data. Pass that table as `img` in the tool return to show it to the model. When it exceeds 32KB or 2000 lines, the tail is kept, the full text spills to a file, and the locator is appended. Returns the nested error text on failure. A tool without a grant list cannot call itself; one with a grant list can only call granted tools.
+---@field call fun(self: BlitzCtx, name: string, args: table): string, { media_type: string, data: string }?
+---Run an array of { name, args } requests in parallel, at most 8 concurrent. Returns one tail-capped result text per request, in input order, and a second table mapping request index to its image { media_type, data } for requests that produced one. A failed item does not abort the batch.
+---@field batch fun(self: BlitzCtx, requests: table): string[], table<integer, { media_type: string, data: string }>
 
 ---@class BlitzCall
 ---@field id string
@@ -462,6 +601,7 @@
 
 ---@class ToolDef
 ---@field name string
+---At most 16384 bytes. Include the arguments of any granted `tools` here; blitz.tool_info returns them.
 ---@field description string
 ---@field schema? string
 ---@field args? table<string, BlitzArgDef>
@@ -469,7 +609,18 @@
 ---@field guidelines? string
 ---only offer the tool to agents whose model has vision
 ---@field requires_vision? boolean
+---Sealed grant list of tool ids and toolsets. The tool can run these through ctx:call and ctx:batch without the agent holding them, and nothing else. Absent keeps the default: ctx:call and ctx:batch run the tools of the calling agent.
+---@field tools? (string|string[])[]
 ---@field func fun(ctx: BlitzCtx, call: BlitzCall): BlitzToolResult
+
+---@class BlitzToolInfo
+---pool id of the tool
+---@field id string
+---name the model sees
+---@field name string
+---@field description string
+---JSON schema of the tool arguments
+---@field schema string
 
 ---@class BlitzAgentRow
 ---packed agent id
@@ -678,7 +829,7 @@
 ---@field agent BlitzAgent
 ---@field cmp BlitzCmp
 ---@field input BlitzInput
----@field draw BlitzDraw
+---@field ui BlitzUi
 ---@field tools BlitzToolDef
 ---@field toolsets BlitzToolsetDef
 ---@field hooks BlitzHooks
@@ -697,6 +848,8 @@
 ---@field register_tool fun(def: ToolDef): string
 ---Add a tool or a toolset from the tool pool to an agent type's tool set.
 ---@field add_tool fun(agent_type: integer, tool: string|string[])
+---Id, name, description and argument schema of tools from the tool pool, given as ids, exposed names or toolsets. Unknown tools and tools that hold grants are skipped, and a shared exposed name keeps the first. MCP tools are not loaded while the config runs. Returns an empty list inside tool VMs.
+---@field tool_info fun(tools: string|string[]): BlitzToolInfo[]
 ---Return the main agent, if a session is running.
 ---@field get_main_agent fun(): integer|nil
 ---Return the id of the recorded session, or nil until its journal holds a first record.
